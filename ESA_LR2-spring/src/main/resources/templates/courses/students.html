@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Students in Course</title>
+</head>
+<body>
+<h1>Студенты, записанные на курс</h1>
+<ul>
+    <li th:each="student : ${students}">
+        <span th:text="${student.firstName} + ' ' + ${student.lastName}"></span>
+    </li>
+</ul>
+
+<h2>Добавить студента</h2>
+<form th:action="@{/courses/{id}/enroll(id=${courseId})}" method="post">
+    <label for="studentId">ID студента:</label>
+    <input type="text" id="studentId" name="studentId" required>
+    <button type="submit">Записать</button>
+</form>
+
+<a th:href="@{/courses}">Назад к курсам</a>
+
+</body>
+</html>

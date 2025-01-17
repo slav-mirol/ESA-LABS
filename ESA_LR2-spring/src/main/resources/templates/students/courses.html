@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Courses of Student</title>
+</head>
+<body>
+<h1>Курсы студента</h1>
+<ul>
+    <li th:each="course : ${courses}">
+        <span th:text="${course.title}"></span>
+    </li>
+</ul>
+
+<a th:href="@{/students}">Назад к студентам</a>
+
+</body>
+</html>

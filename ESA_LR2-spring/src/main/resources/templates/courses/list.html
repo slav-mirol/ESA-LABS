@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Courses</title>
+</head>
+<body>
+<h1>Список курсов</h1>
+<ul>
+    <li th:each="course : ${courses}">
+        <span th:text="${course.title}"></span> -
+        <span th:text="${course.description}"></span>
+    </li>
+</ul>
+<a href="/courses/new">Добавить курс</a>
+</body>
+</html>
