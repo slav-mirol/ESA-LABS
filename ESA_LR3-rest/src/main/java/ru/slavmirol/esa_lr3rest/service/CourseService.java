@@ -1,5 +1,9 @@
 package ru.slavmirol.esa_lr3rest.service;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jms.core.JmsTemplate;
 import ru.slavmirol.esa_lr3rest.model.Course;
 import ru.slavmirol.esa_lr3rest.model.Enrollment;
 import ru.slavmirol.esa_lr3rest.model.Student;
@@ -13,6 +17,9 @@ import java.util.Optional;
 
 @Service
 public class CourseService {
+
+    @Autowired
+    private JmsTemplate jmsTemplate;
 
     private final CourseRepository courseRepository;
     private final EnrollmentRepository enrollmentRepository;
@@ -36,16 +43,30 @@ public class CourseService {
     }
 
     public Course createCourse(Course course) {
-        return courseRepository.save(course);
+        Course createdCourse = courseRepository.save(course);
+        jmsTemplate.convertAndSend("entityChangeQueue", new EntityChangeMessage(
+                "Course",
+                createdCourse.getId(),
+                "INSERT",
+                createdCourse.toString()
+        ));
+        return createdCourse;
     }
 
     public Course updateCourse(Long id, Course updatedCourse) {
-        return courseRepository.findById(id)
+        Course curCourse = courseRepository.findById(id)
                 .map(course -> {
                     course.setName(updatedCourse.getName());
                     course.setDescription(updatedCourse.getDescription());
                     return courseRepository.save(course);
                 }).orElseThrow(() -> new RuntimeException("Course not found"));
+        jmsTemplate.convertAndSend("entityChangeQueue", new EntityChangeMessage(
+                "Course",
+                curCourse.getId(),
+                "UPDATE",
+                curCourse.toString()
+        ));
+        return curCourse;
     }
 
     public void deleteCourse(Long id) {
@@ -56,6 +77,14 @@ public class CourseService {
         if (!enrollments.isEmpty()) {
             enrollmentRepository.deleteAll(enrollments);
         }
+
+        Course deletedCourse = courseRepository.findById(id).orElse(null);
+        jmsTemplate.convertAndSend("entityChangeQueue", new EntityChangeMessage(
+                "Course",
+                deletedCourse.getId(),
+                "DELETE",
+                deletedCourse.toString()
+        ));
 
         // Удаляем курс
         courseRepository.deleteById(id);
@@ -74,7 +103,80 @@ public class CourseService {
         enrollment.setCourse(course);
 
         // Сохранить запись
-        enrollmentRepository.save(enrollment);
+        Enrollment createdEnrollment = enrollmentRepository.save(enrollment);
+
+        jmsTemplate.convertAndSend("entityChangeQueue", new EntityChangeMessage(
+                "Enrollment",
+                createdEnrollment.getId(),
+                "INSERT",
+                createdEnrollment.toString()
+        ));
+
         return enrollment;
+
+    }
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    @JsonPropertyOrder({"entityName","entityId","changeType","changeDetails"})
+    public static class EntityChangeMessage {
+        private String entityName;
+        private Long entityId;
+        private String changeType;
+        private String changeDetails;
+
+        public EntityChangeMessage(String entityName, Long entityId, String changeType, String changeDetails) {
+            this.entityName = entityName;
+            this.entityId = entityId;
+            this.changeType = changeType;
+            this.changeDetails = changeDetails;
+        }
+
+        public EntityChangeMessage() {
+
+        }
+
+        // Геттеры и сеттеры
+        public String getEntityName() {
+            return entityName;
+        }
+
+        public void setEntityName(String entityName) {
+            this.entityName = entityName;
+        }
+
+        public Long getEntityId() {
+            return entityId;
+        }
+
+        public void setEntityId(Long entityId) {
+            this.entityId = entityId;
+        }
+
+        public String getChangeType() {
+            return changeType;
+        }
+
+        public void setChangeType(String changeType) {
+            this.changeType = changeType;
+        }
+
+        public String getChangeDetails() {
+            return changeDetails;
+        }
+
+        public void setChangeDetails(String changeDetails) {
+            this.changeDetails = changeDetails;
+        }
+
+        @Override
+        public String toString() {
+            return "EntityChangeMessage{" +
+                    "entityName='" + entityName + '\'' +
+                    ", entityId=" + entityId +
+                    ", changeType='" + changeType + '\'' +
+                    ", changeDetails='" + changeDetails + '\'' +
+                    '}';
+        }
     }
 }
+

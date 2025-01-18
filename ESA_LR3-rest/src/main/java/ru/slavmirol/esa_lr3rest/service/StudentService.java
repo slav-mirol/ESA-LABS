@@ -1,5 +1,7 @@
 package ru.slavmirol.esa_lr3rest.service;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jms.core.JmsTemplate;
 import ru.slavmirol.esa_lr3rest.model.Enrollment;
 import ru.slavmirol.esa_lr3rest.model.Student;
 import ru.slavmirol.esa_lr3rest.repository.StudentRepository;
@@ -11,6 +13,10 @@ import java.util.Optional;
 
 @Service
 public class StudentService {
+
+    @Autowired
+    private JmsTemplate jmsTemplate;
+
     private final StudentRepository studentRepository;
     private final EnrollmentRepository enrollmentRepository;
 
@@ -28,16 +34,32 @@ public class StudentService {
     }
 
     public Student createStudent(Student student) {
-        return studentRepository.save(student);
+        Student createdStudent = studentRepository.save(student);
+        jmsTemplate.convertAndSend("entityChangeQueue", new CourseService.EntityChangeMessage(
+                "Course",
+                createdStudent.getId(),
+                "INSERT",
+                createdStudent.toString()
+        ));
+        return createdStudent;
     }
 
     public Student updateStudent(Long id, Student updatedStudent) {
-        return studentRepository.findById(id)
-                .map(student -> {
-                    student.setFirstName(updatedStudent.getFirstName());
-                    student.setLastName(updatedStudent.getLastName());
-                    return studentRepository.save(student);
-                }).orElseThrow(() -> new RuntimeException("Student not found"));
+        Student curStudent = studentRepository.findById(id)
+                             .map(student -> {
+                                    student.setFirstName(updatedStudent.getFirstName());
+                                    student.setLastName(updatedStudent.getLastName());
+                                    return studentRepository.save(student);
+                                 }).orElseThrow(() -> new RuntimeException("Student not found"));
+
+        jmsTemplate.convertAndSend("entityChangeQueue", new CourseService.EntityChangeMessage(
+                "Student",
+                curStudent.getId(),
+                "UPDATE",
+                curStudent.toString()
+        ));
+
+        return curStudent;
     }
 
     public void deleteStudent(Long id) {
@@ -49,7 +71,15 @@ public class StudentService {
             enrollmentRepository.deleteAll(enrollments);
         }
 
-        // Удаляем курс
+        Student deletedStudent = studentRepository.findById(id).orElse(null);
+        jmsTemplate.convertAndSend("entityChangeQueue", new CourseService.EntityChangeMessage(
+                "Student",
+                deletedStudent.getId(),
+                "DELETE",
+                deletedStudent.toString()
+        ));
+
+        // Удаляем студента
         studentRepository.deleteById(id);
     }
 }
