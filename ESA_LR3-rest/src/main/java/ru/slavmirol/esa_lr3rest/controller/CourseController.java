@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import ru.slavmirol.esa_lr3rest.model.Course;
+import ru.slavmirol.esa_lr3rest.model.Enrollment;
 import ru.slavmirol.esa_lr3rest.service.CourseService;
 import org.springframework.web.bind.annotation.*;
 
@@ -97,6 +98,12 @@ public class CourseController {
     public ResponseEntity<Course> createCourse(@RequestBody Course course) {
         Course createdCourse = courseService.createCourse(course);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdCourse);
+    }
+
+    @PostMapping("{id}/addStudent/{studentId}")
+    public ResponseEntity<Enrollment> addStudentToCourse(@PathVariable Long id, @PathVariable Long studentId) {
+        Enrollment createdEnrollment = courseService.enrollStudent(id, studentId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdEnrollment);
     }
 
     // Обновить курс
